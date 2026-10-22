@@ -58,6 +58,9 @@ public class TableModelProducto extends AbstractTableModel {
     }
     
     public Producto detalle(int fila) {
+        if (fila < 0 || fila >= this.producto.size()) {
+            return null;
+        }
         return this.producto.get(fila);
     }
     

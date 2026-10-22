@@ -62,12 +62,19 @@ public class BaseDatosProductos {
         this.listaProductos.put(p.getCodigo(), p);
     }
     
-    public void actualizar(Producto p) {
-        this.listaProductos.replace(p.getCodigo(), p);
+    public boolean actualizar(Producto p) {
+        if (p == null || !this.listaProductos.containsKey(p.getCodigo())) {
+            return false;
+        }
+        this.listaProductos.put(p.getCodigo(), p);
+        return true;
     }
     
-    public void borrar(Producto p) {
-        this.listaProductos.remove(p.getCodigo());
+    public boolean borrar(Producto p) {
+        if (p == null) {
+            return false;
+        }
+        return this.listaProductos.remove(p.getCodigo()) != null;
     }
     
     public String generarInforme() {
