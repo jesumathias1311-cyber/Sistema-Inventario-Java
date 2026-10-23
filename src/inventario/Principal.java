@@ -46,6 +46,7 @@ public class Principal extends javax.swing.JFrame {
         txtPrecio = new javax.swing.JTextField();
         jLabel6 = new javax.swing.JLabel();
         txtInventario = new javax.swing.JTextField();
+        txtCantidad = new javax.swing.JTextField();
         btnAgregar = new javax.swing.JButton();
         btnComprar = new javax.swing.JButton();
         btnVender = new javax.swing.JButton();
@@ -370,51 +371,56 @@ public class Principal extends javax.swing.JFrame {
         }
     }                                             
     
-    private void btnComprarActionPerformed(java.awt.event.ActionEvent evt) {                                           
+        private void btnComprarActionPerformed(java.awt.event.ActionEvent evt) {
+        if (!validarDatos()) {
+            return;
+        }
+
         Producto producto = ((TableModelProducto) this.tblTabla.getModel()).detalle(this.tblTabla.getSelectedRow());
         int actualInventario = Integer.parseInt(String.valueOf(producto.getInventario()));
-        //nuevoInventario = actualInventario - inventario;
-        
-        if (validarDatos() && inventario > 0 && inventario <= actualInventario) {
-            if (nuevoInventario >= 0) {
-                nuevoInventario = actualInventario - inventario;
-                //bdProductos.agregar(new Producto(codigo, nombre, precio, nuevoInventario));
-                bdProductos.comprarProducto(producto, nuevoInventario);
-                this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                limpiarDatos();
-                //bdProductos.actualizar(new Producto(codigo, nombre, precio, nuevoInventario));
-                //this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                //limpiarDatos();
-                JOptionPane.showMessageDialog(this,"Producto comprado Exitosamente", "Confirmacion", 1);
-            } else {
-                JOptionPane.showMessageDialog(this,"No tenemos el suficiente inventario", "Advertencia", 2);
-            }
+        int cantidad = Integer.parseInt(txtCantidad.getText().trim());
+
+        if (cantidad > 0) {
+            // Al comprar, sumamos la cantidad al stock actual
+            int nuevoInventario = actualInventario + cantidad;
+            
+            bdProductos.comprarProducto(producto, nuevoInventario);
+            this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
+            limpiarDatos();
+            txtCantidad.setText("");
+            
+            JOptionPane.showMessageDialog(this, "Producto comprado Exitosamente", "Confirmacion", 1);
         } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
+            JOptionPane.showMessageDialog(this, "La cantidad debe ser mayor a cero", "Advertencia", 2);
         }
     }           
     
-    private void btnVenderActionPerformed(java.awt.event.ActionEvent evt) {                                           
+        private void btnVenderActionPerformed(java.awt.event.ActionEvent evt) {
+        if (!validarDatos()) {
+            return;
+        }
+
         Producto producto = ((TableModelProducto) this.tblTabla.getModel()).detalle(this.tblTabla.getSelectedRow());
         int actualInventario = Integer.parseInt(String.valueOf(producto.getInventario()));
-        //nuevoInventario = actualInventario - inventario;
-        
-        if (validarDatos() && inventario > 0) {
-            if (nuevoInventario >= 0) {
-                nuevoInventario = actualInventario + inventario;
-                //bdProductos.agregar(new Producto(codigo, nombre, precio, nuevoInventario));
+        int cantidad = Integer.parseInt(txtCantidad.getText().trim());
+
+        if (cantidad > 0) {
+            // Validamos primero si el stock actual alcanza para cubrir la venta
+            if (actualInventario >= cantidad) {
+                int nuevoInventario = actualInventario - cantidad; // Al vender, restamos stock
+                
                 bdProductos.comprarProducto(producto, nuevoInventario);
                 this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
                 limpiarDatos();
-                //bdProductos.actualizar(new Producto(codigo, nombre, precio, nuevoInventario));
-                //this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                //limpiarDatos();
-                JOptionPane.showMessageDialog(this,"Producto vendido Exitosamente", "Confirmacion", 1);
+                txtCantidad.setText("");
+                
+                JOptionPane.showMessageDialog(this, "Producto vendido Exitosamente", "Confirmacion", 1);
             } else {
-                JOptionPane.showMessageDialog(this,"No tenemos el suficiente inventario", "Advertencia", 2);
+                // Este es el mensaje exacto que exigía el RFC
+                JOptionPane.showMessageDialog(this, "No tenemos el suficiente inventario", "Advertencia", 2);
             }
         } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
+            JOptionPane.showMessageDialog(this, "La cantidad debe ser mayor a cero", "Advertencia", 2);
         }
     }                                          
 
@@ -494,5 +500,6 @@ public class Principal extends javax.swing.JFrame {
     private javax.swing.JTextField txtInventario;
     private javax.swing.JTextField txtNombre;
     private javax.swing.JTextField txtPrecio;
+    private javax.swing.JTextField txtCantidad;
     // End of variables declaration                   
 }
