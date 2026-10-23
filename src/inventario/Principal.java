@@ -8,21 +8,21 @@ import javax.swing.JOptionPane;
  */
 
 public class Principal extends javax.swing.JFrame {
-    public int codigo;
-    public String nombre;
-    public double precio;
-    public int inventario;
-    public int nuevoInventario;
-    Producto Producto[];
-    BaseDatosProductos bdProductos = new BaseDatosProductos();
+    // SRP (RFC #4): la vista delega las reglas y el estado al servicio.
+    private final InventarioService inventarioService;
     
     
     /**
      * Creates new form Principal
      */
     public Principal() {
+        this(new InventarioService(new BaseDatosProductos()));
+    }
+
+    public Principal(InventarioService inventarioService) {
+        this.inventarioService = java.util.Objects.requireNonNull(inventarioService, "inventarioService");
         initComponents();
-        this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
+        refrescarTabla();
     }
 
     /**
@@ -313,46 +313,24 @@ public class Principal extends javax.swing.JFrame {
     }                                             
 
     private void btnEliminarActionPerformed(java.awt.event.ActionEvent evt) {                                            
-        if (validarDatos()) {
-            bdProductos.borrar(new Producto(codigo, nombre, precio, inventario));
-            this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-            limpiarDatos();
-            JOptionPane.showMessageDialog(this,"Producto eliminado Exitosamente", "Confirmacion", 1);
-        } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
-        }
+        ejecutarOperacion(() -> inventarioService.eliminar(codigoSeleccionado()), "Producto eliminado Exitosamente");
     }                                           
 
     private void btnInformeActionPerformed(java.awt.event.ActionEvent evt) {                                           
-        JOptionPane.showMessageDialog(this, bdProductos.generarInforme(), "Productos Más Costosos", 1);
+        JOptionPane.showMessageDialog(this, inventarioService.generarInforme(), "Productos Más Costosos", JOptionPane.INFORMATION_MESSAGE);
     }                                          
 
     private void btnAgregarActionPerformed(java.awt.event.ActionEvent evt) {                                           
-        if (validarDatos()) {
-            if (!bdProductos.verificarExistencias(nombre)) {
-                    if (codigo == 0) {
-                if (nombre.matches("[a-zA-Z]+")) {
-                        int codigoAux = bdProductos.ultimoCodigo() + 1;
-                        bdProductos.agregar(new Producto(codigoAux, nombre, precio, inventario));
-                        this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                        limpiarDatos();
-                        JOptionPane.showMessageDialog(this,"Producto Agregado Exitosamente", "Confirmacion", 1);
-                    } else {
-                        JOptionPane.showMessageDialog(this,"El nombre no puede contener numeros", "Advertencia", 2);
-                    }
-                } else {
-                    JOptionPane.showMessageDialog(this,"Imposible agregar! Esta accion es permitida para Actualizar o Borrar", "Advertencia", 2);
-                }
-            } else {
-                JOptionPane.showMessageDialog(this,"El producto ya existe", "Advertencia", 2);
-            }
-        } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
-        }
+        ejecutarOperacion(() -> inventarioService.agregar(txtCodigo.getText(), txtNombre.getText(),
+                txtPrecio.getText(), txtInventario.getText()), "Producto Agregado Exitosamente");
     }                                          
 
     private void tblTablaMouseClicked(java.awt.event.MouseEvent evt) {                                      
-        Producto producto = ((TableModelProducto) this.tblTabla.getModel()).detalle(this.tblTabla.getSelectedRow());
+        int fila = this.tblTabla.getSelectedRow();
+        if (fila < 0) {
+            return;
+        }
+        Producto producto = ((TableModelProducto) this.tblTabla.getModel()).detalle(this.tblTabla.convertRowIndexToModel(fila));
         this.txtCodigo.setText(String.valueOf(producto.getCodigo()));
         this.txtNombre.setText(producto.getNombre());
         this.txtPrecio.setText(String.valueOf(producto.getPrecio()));
@@ -360,77 +338,48 @@ public class Principal extends javax.swing.JFrame {
     }                                     
 
     private void btnActualizarActionPerformed(java.awt.event.ActionEvent evt) {                                              
-        if (validarDatos() && inventario >= 0) {
-            bdProductos.actualizar(new Producto(codigo, nombre, precio, inventario));
-            this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-            limpiarDatos();
-            JOptionPane.showMessageDialog(this,"Producto actualizado Exitosamente", "Confirmacion", 1);
-        } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
-        }
+        ejecutarOperacion(() -> inventarioService.actualizar(codigoSeleccionado(), txtNombre.getText(),
+                txtPrecio.getText(), txtInventario.getText()), "Producto actualizado Exitosamente");
     }                                             
     
     private void btnComprarActionPerformed(java.awt.event.ActionEvent evt) {                                           
-        Producto producto = ((TableModelProducto) this.tblTabla.getModel()).detalle(this.tblTabla.getSelectedRow());
-        int actualInventario = Integer.parseInt(String.valueOf(producto.getInventario()));
-        //nuevoInventario = actualInventario - inventario;
-        
-        if (validarDatos() && inventario > 0 && inventario <= actualInventario) {
-            if (nuevoInventario >= 0) {
-                nuevoInventario = actualInventario - inventario;
-                //bdProductos.agregar(new Producto(codigo, nombre, precio, nuevoInventario));
-                bdProductos.comprarProducto(producto, nuevoInventario);
-                this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                limpiarDatos();
-                //bdProductos.actualizar(new Producto(codigo, nombre, precio, nuevoInventario));
-                //this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                //limpiarDatos();
-                JOptionPane.showMessageDialog(this,"Producto comprado Exitosamente", "Confirmacion", 1);
-            } else {
-                JOptionPane.showMessageDialog(this,"No tenemos el suficiente inventario", "Advertencia", 2);
-            }
-        } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
-        }
+        ejecutarOperacion(() -> inventarioService.comprar(codigoSeleccionado(), txtInventario.getText()),
+                "Producto comprado Exitosamente");
     }           
     
     private void btnVenderActionPerformed(java.awt.event.ActionEvent evt) {                                           
-        Producto producto = ((TableModelProducto) this.tblTabla.getModel()).detalle(this.tblTabla.getSelectedRow());
-        int actualInventario = Integer.parseInt(String.valueOf(producto.getInventario()));
-        //nuevoInventario = actualInventario - inventario;
-        
-        if (validarDatos() && inventario > 0) {
-            if (nuevoInventario >= 0) {
-                nuevoInventario = actualInventario + inventario;
-                //bdProductos.agregar(new Producto(codigo, nombre, precio, nuevoInventario));
-                bdProductos.comprarProducto(producto, nuevoInventario);
-                this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                limpiarDatos();
-                //bdProductos.actualizar(new Producto(codigo, nombre, precio, nuevoInventario));
-                //this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                //limpiarDatos();
-                JOptionPane.showMessageDialog(this,"Producto vendido Exitosamente", "Confirmacion", 1);
-            } else {
-                JOptionPane.showMessageDialog(this,"No tenemos el suficiente inventario", "Advertencia", 2);
-            }
-        } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
-        }
+        ejecutarOperacion(() -> inventarioService.vender(codigoSeleccionado(), txtInventario.getText()),
+                "Producto vendido Exitosamente");
     }                                          
 
-    public boolean validarDatos() {
-        try {    
-            codigo = Integer.parseInt("".equals(txtCodigo.getText()) ? "0" : txtCodigo.getText());
-            nombre = txtNombre.getText();
-            precio = Double.parseDouble(txtPrecio.getText());
-            inventario = Integer.parseInt(txtInventario.getText());
-            return true;            
-        } catch (Exception e) {
-            return false;
+    // SRP: solo traduce la selección visual a un identificador de negocio.
+    private Integer codigoSeleccionado() {
+        int fila = tblTabla.getSelectedRow();
+        if (fila < 0) {
+            return null;
         }
+        return ((TableModelProducto) tblTabla.getModel())
+                .detalle(tblTabla.convertRowIndexToModel(fila)).getCodigo();
+    }
+
+    // SRP: los diálogos y el refresco pertenecen exclusivamente a la presentación.
+    private void ejecutarOperacion(Runnable operacion, String mensaje) {
+        try {
+            operacion.run();
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Advertencia", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        refrescarTabla();
+        limpiarDatos();
+        JOptionPane.showMessageDialog(this, mensaje, "Confirmacion", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void refrescarTabla() {
+        tblTabla.setModel(new TableModelProducto(inventarioService.listarProductos()));
     }
     
-    public void limpiarDatos() {
+    private void limpiarDatos() {
         this.txtCodigo.setText("");
         this.txtNombre.setText("");
         this.txtPrecio.setText("");

@@ -33,8 +33,15 @@ public class BaseDatosProductos {
         this.listaProductos = listaProductos;
     }
     
-    public void comprarProducto(Producto producto, int inventory) {
-        producto.setInventario(inventory);
+    // RFC #4: la actualización se identifica por código y confirma su resultado.
+    public boolean actualizarInventario(int codigo, int inventario) {
+        Producto existente = this.listaProductos.get(codigo);
+        if (existente == null) {
+            return false;
+        }
+        this.listaProductos.put(codigo, new Producto(codigo, existente.getNombre(),
+                existente.getPrecio(), inventario));
+        return true;
     }
     
     public boolean verificarExistencias(Producto producto) {
@@ -68,27 +75,6 @@ public class BaseDatosProductos {
     
     public void borrar(Producto p) {
         this.listaProductos.remove(p.getCodigo());
-    }
-    
-    public String generarInforme() {
-        List<Producto> listaM = obtenerMayores();
-        return listaM.get(0).getNombre() + ", " + listaM.get(1).getNombre() + ", " + listaM.get(2).getNombre() + ".";
-    }
-    
-    private List<Producto> obtenerMayores() {
-       List<Producto> lista = new ArrayList<>(this.listaProductos.values());
-       List<Producto> listaMayores = new ArrayList<>();
-        for (int i = 0; i < 3; i++) {
-            Producto p = new Producto();
-            for (Producto pTemp : lista) {
-                if (pTemp.getPrecio() > p.getPrecio()) {
-                    p = pTemp;
-                }
-            }
-            listaMayores.add(p);
-            lista.remove(p);
-        }
-        return listaMayores;
     }
     
 }
