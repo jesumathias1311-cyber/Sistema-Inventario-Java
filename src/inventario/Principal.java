@@ -9,6 +9,9 @@ import javax.swing.JOptionPane;
  * los mensajes y el refresco de la tabla; Clean Code al encapsular el estado y
  * retirar código muerto; y un único modelo de tabla observable.</p>
  *
+ * <p>SRP: la ventana solo captura eventos y muestra resultados; las reglas de
+ * negocio viven en InventarioService.</p>
+ *
  * @author Abraham Galue
  */
 
@@ -18,22 +21,14 @@ public class Principal extends javax.swing.JFrame {
     private String nombre;
     private double precio;
     private int inventario;
-    private final BaseDatosProductos bdProductos = new BaseDatosProductos();
+    // SRP: las reglas de negocio viven en el servicio; la ventana solo lo usa.
+    private final InventarioService servicio = new InventarioService();
     // DRY: un único modelo reutilizable evita recrearlo después de cada operación.
-    private final TableModelProducto modeloProductos = new TableModelProducto(bdProductos.getListaProductos());
+    private final TableModelProducto modeloProductos = new TableModelProducto(servicio.listar());
 
-    // DRY: parametriza la única diferencia entre Comprar y Vender.
-    private enum OperacionInventario {
-        COMPRAR(-1, "Producto comprado Exitosamente"),
-        VENDER(1, "Producto vendido Exitosamente");
-
-        private final int factor;
-        private final String mensaje;
-
-        OperacionInventario(int factor, String mensaje) {
-            this.factor = factor;
-            this.mensaje = mensaje;
-        }
+    // Acción de negocio que se ejecuta una vez leídos y validados los datos del formulario.
+    private interface Accion {
+        void ejecutar();
     }
 
     /**
@@ -295,38 +290,17 @@ public class Principal extends javax.swing.JFrame {
     //GEN-END:initComponents                                                                       
 
     private void btnEliminarActionPerformed(java.awt.event.ActionEvent evt) {
-        if (validarDatos()) {
-            bdProductos.borrar(new Producto(codigo, nombre, precio, inventario));
-            finalizarOperacion("Producto eliminado Exitosamente");
-        } else {
-            mostrarErrorValidacion();
-        }
+        ejecutar(() -> servicio.eliminar(new Producto(codigo, nombre, precio, inventario)),
+                "Producto eliminado Exitosamente");
     }
 
     private void btnInformeActionPerformed(java.awt.event.ActionEvent evt) {
-        JOptionPane.showMessageDialog(this, bdProductos.generarInforme(), "Productos Más Costosos", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, servicio.generarInforme(), "Productos Más Costosos", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void btnAgregarActionPerformed(java.awt.event.ActionEvent evt) {
-        if (validarDatos()) {
-            if (!bdProductos.verificarExistencias(nombre)) {
-                if (codigo == 0) {
-                    if (nombre.matches("[a-zA-Z]+")) {
-                        int codigoAux = bdProductos.ultimoCodigo() + 1;
-                        bdProductos.agregar(new Producto(codigoAux, nombre, precio, inventario));
-                        finalizarOperacion("Producto Agregado Exitosamente");
-                    } else {
-                        mostrarAdvertencia("El nombre no puede contener numeros");
-                    }
-                } else {
-                    mostrarAdvertencia("Imposible agregar! Esta accion es permitida para Actualizar o Borrar");
-                }
-            } else {
-                mostrarAdvertencia("El producto ya existe");
-            }
-        } else {
-            mostrarErrorValidacion();
-        }
+        ejecutar(() -> servicio.agregar(new Producto(codigo, nombre, precio, inventario)),
+                "Producto Agregado Exitosamente");
     }
 
     private void tblTablaMouseClicked(java.awt.event.MouseEvent evt) {
@@ -338,39 +312,45 @@ public class Principal extends javax.swing.JFrame {
     }
 
     private void btnActualizarActionPerformed(java.awt.event.ActionEvent evt) {
-        if (validarDatos() && inventario >= 0) {
-            bdProductos.actualizar(new Producto(codigo, nombre, precio, inventario));
-            finalizarOperacion("Producto actualizado Exitosamente");
-        } else {
-            mostrarErrorValidacion();
-        }
+        ejecutar(() -> servicio.actualizar(new Producto(codigo, nombre, precio, inventario)),
+                "Producto actualizado Exitosamente");
     }
 
     private void btnComprarActionPerformed(java.awt.event.ActionEvent evt) {
         // DRY: delega en la lógica común de inventario.
-        operarInventario(OperacionInventario.COMPRAR);
+        operarInventario(InventarioService.Operacion.COMPRAR);
     }
 
     private void btnVenderActionPerformed(java.awt.event.ActionEvent evt) {
         // DRY: delega en la lógica común de inventario.
-        operarInventario(OperacionInventario.VENDER);
+        operarInventario(InventarioService.Operacion.VENDER);
     }
 
     /**
-     * DRY: lógica única para Comprar y Vender. El enum indica el sentido de la
-     * operación y el mensaje de confirmación.
+     * DRY: lógica única para Comprar y Vender. SRP: la regla del inventario la
+     * aplica el servicio; aquí solo se obtiene la fila y se muestra el resultado.
      */
-    private void operarInventario(OperacionInventario operacion) {
+    private void operarInventario(InventarioService.Operacion operacion) {
         Producto producto = modeloProductos.detalle(this.tblTabla.getSelectedRow());
-        int actualInventario = producto.getInventario();
+        ejecutar(() -> servicio.operar(producto, operacion, inventario), operacion.getMensaje());
+    }
 
-        if (validarDatos() && inventario > 0
-                && (operacion != OperacionInventario.COMPRAR || inventario <= actualInventario)) {
-            bdProductos.comprarProducto(producto, actualInventario + operacion.factor * inventario);
-            finalizarOperacion(operacion.mensaje);
-        } else {
+    /**
+     * SRP: lee el formulario, pide la operación al servicio y muestra el resultado
+     * (advertencia si el servicio rechaza la operación, confirmación si sale bien).
+     */
+    private void ejecutar(Accion accion, String mensajeExito) {
+        if (!validarDatos()) {
             mostrarErrorValidacion();
+            return;
         }
+        try {
+            accion.ejecutar();
+        } catch (InventarioException ex) {
+            mostrarAdvertencia(ex.getMessage());
+            return;
+        }
+        finalizarOperacion(mensajeExito);
     }
 
     // Clean Code: validación privada; no forma parte de la API de la ventana.
@@ -391,7 +371,7 @@ public class Principal extends javax.swing.JFrame {
      * a la vista mediante fireTableDataChanged().
      */
     private void refrescarTabla() {
-        modeloProductos.actualizarTabla(bdProductos.getListaProductos());
+        modeloProductos.actualizarTabla(servicio.listar());
         this.tblTabla.clearSelection();
     }
 
@@ -404,7 +384,7 @@ public class Principal extends javax.swing.JFrame {
      * DRY: mensaje de validación que antes se repetía en cinco manejadores.
      */
     private void mostrarErrorValidacion() {
-        mostrarAdvertencia("Alguno de los valores digitados esta vacio o es erroneo");
+        mostrarAdvertencia(InventarioService.MENSAJE_DATOS_INVALIDOS);
     }
 
     /**
