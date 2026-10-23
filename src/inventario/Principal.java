@@ -18,7 +18,6 @@ public class Principal extends javax.swing.JFrame {
     private String nombre;
     private double precio;
     private int inventario;
-    private int nuevoInventario;
     private final BaseDatosProductos bdProductos = new BaseDatosProductos();
     // DRY: un único modelo reutilizable evita recrearlo después de cada operación.
     private final TableModelProducto modeloProductos = new TableModelProducto(bdProductos.getListaProductos());
@@ -36,8 +35,7 @@ public class Principal extends javax.swing.JFrame {
             this.mensaje = mensaje;
         }
     }
-    
-    
+
     /**
      * Creates new form Principal
      */
@@ -296,20 +294,20 @@ public class Principal extends javax.swing.JFrame {
     // </editor-fold>
     //GEN-END:initComponents                                                                       
 
-    private void btnEliminarActionPerformed(java.awt.event.ActionEvent evt) {                                            
+    private void btnEliminarActionPerformed(java.awt.event.ActionEvent evt) {
         if (validarDatos()) {
             bdProductos.borrar(new Producto(codigo, nombre, precio, inventario));
             finalizarOperacion("Producto eliminado Exitosamente");
         } else {
             mostrarErrorValidacion();
         }
-    }                                           
+    }
 
-    private void btnInformeActionPerformed(java.awt.event.ActionEvent evt) {                                           
+    private void btnInformeActionPerformed(java.awt.event.ActionEvent evt) {
         JOptionPane.showMessageDialog(this, bdProductos.generarInforme(), "Productos Más Costosos", JOptionPane.INFORMATION_MESSAGE);
-    }                                          
+    }
 
-    private void btnAgregarActionPerformed(java.awt.event.ActionEvent evt) {                                           
+    private void btnAgregarActionPerformed(java.awt.event.ActionEvent evt) {
         if (validarDatos()) {
             if (!bdProductos.verificarExistencias(nombre)) {
                 if (codigo == 0) {
@@ -329,31 +327,31 @@ public class Principal extends javax.swing.JFrame {
         } else {
             mostrarErrorValidacion();
         }
-    }                                          
+    }
 
-    private void tblTablaMouseClicked(java.awt.event.MouseEvent evt) {                                      
+    private void tblTablaMouseClicked(java.awt.event.MouseEvent evt) {
         Producto producto = modeloProductos.detalle(this.tblTabla.getSelectedRow());
         this.txtCodigo.setText(String.valueOf(producto.getCodigo()));
         this.txtNombre.setText(producto.getNombre());
         this.txtPrecio.setText(String.valueOf(producto.getPrecio()));
         this.txtInventario.setText(String.valueOf(producto.getInventario()));
-    }                                     
+    }
 
-    private void btnActualizarActionPerformed(java.awt.event.ActionEvent evt) {                                              
+    private void btnActualizarActionPerformed(java.awt.event.ActionEvent evt) {
         if (validarDatos() && inventario >= 0) {
             bdProductos.actualizar(new Producto(codigo, nombre, precio, inventario));
             finalizarOperacion("Producto actualizado Exitosamente");
         } else {
             mostrarErrorValidacion();
         }
-    }                                             
-    
-    private void btnComprarActionPerformed(java.awt.event.ActionEvent evt) {                                           
+    }
+
+    private void btnComprarActionPerformed(java.awt.event.ActionEvent evt) {
         // DRY: delega en la lógica común de inventario.
         operarInventario(OperacionInventario.COMPRAR);
     }
 
-    private void btnVenderActionPerformed(java.awt.event.ActionEvent evt) {                                           
+    private void btnVenderActionPerformed(java.awt.event.ActionEvent evt) {
         // DRY: delega en la lógica común de inventario.
         operarInventario(OperacionInventario.VENDER);
     }
@@ -368,31 +366,26 @@ public class Principal extends javax.swing.JFrame {
 
         if (validarDatos() && inventario > 0
                 && (operacion != OperacionInventario.COMPRAR || inventario <= actualInventario)) {
-            if (nuevoInventario >= 0) {
-                nuevoInventario = actualInventario + operacion.factor * inventario;
-                bdProductos.comprarProducto(producto, nuevoInventario);
-                finalizarOperacion(operacion.mensaje);
-            } else {
-                mostrarAdvertencia("No tenemos el suficiente inventario");
-            }
+            bdProductos.comprarProducto(producto, actualInventario + operacion.factor * inventario);
+            finalizarOperacion(operacion.mensaje);
         } else {
             mostrarErrorValidacion();
         }
-    }                                          
+    }
 
     // Clean Code: validación privada; no forma parte de la API de la ventana.
     private boolean validarDatos() {
-        try {    
+        try {
             codigo = Integer.parseInt("".equals(txtCodigo.getText()) ? "0" : txtCodigo.getText());
             nombre = txtNombre.getText();
             precio = Double.parseDouble(txtPrecio.getText());
             inventario = Integer.parseInt(txtInventario.getText());
-            return true;            
+            return true;
         } catch (Exception e) {
             return false;
         }
     }
-    
+
     /**
      * DRY: único punto de refresco. Reutiliza el modelo existente y notifica
      * a la vista mediante fireTableDataChanged().
@@ -430,7 +423,7 @@ public class Principal extends javax.swing.JFrame {
         this.txtPrecio.setText("");
         this.txtInventario.setText("");
     }
-    
+
     /**
      * @param args the command line arguments
      */
@@ -447,13 +440,9 @@ public class Principal extends javax.swing.JFrame {
                     break;
                 }
             }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(Principal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(Principal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(Principal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException
+                | javax.swing.UnsupportedLookAndFeelException ex) {
+            // DRY: un solo bloque para las cuatro excepciones, que se tratan igual.
             java.util.logging.Logger.getLogger(Principal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>

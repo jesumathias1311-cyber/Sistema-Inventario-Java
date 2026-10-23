@@ -33,24 +33,23 @@ public class TableModelProducto extends AbstractTableModel {
         return this.columnas.length;
     }
 
+    /**
+     * DRY: el producto de la fila se obtiene una sola vez con detalle(fila).
+     */
     @Override
     public Object getValueAt(int fila, int columna) {
-        Object resp;
-        
+        Producto p = detalle(fila);
+
         switch(columna) {
             case 0:
-                resp = this.producto.get(fila).getCodigo();
-                break;
+                return p.getCodigo();
             case 1:
-                resp = this.producto.get(fila).getNombre();
-                break;
+                return p.getNombre();
             case 2:
-                resp = this.producto.get(fila).getPrecio();
-                break;
+                return p.getPrecio();
             default:
-                resp = this.producto.get(fila).getInventario();
+                return p.getInventario();
         }
-        return resp;
     }
     
     @Override
