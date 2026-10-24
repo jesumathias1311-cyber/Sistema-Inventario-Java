@@ -3,26 +3,44 @@ package inventario;
 import javax.swing.JOptionPane;
 
 /**
+ * Ventana principal del sistema de inventario.
+ *
+ * <p>Refactorización RFC #5: aplica DRY al compartir la lógica de inventario,
+ * los mensajes y el refresco de la tabla; Clean Code al encapsular el estado y
+ * retirar código muerto; y un único modelo de tabla observable.</p>
+ *
+ * <p>SRP: la ventana solo captura eventos y muestra resultados; las reglas de
+ * negocio viven en InventarioService.</p>
  *
  * @author Abraham Galue
  */
 
 public class Principal extends javax.swing.JFrame {
-    public int codigo;
-    public String nombre;
-    public double precio;
-    public int inventario;
-    public int nuevoInventario;
-    Producto Producto[];
-    BaseDatosProductos bdProductos = new BaseDatosProductos();
-    
-    
+    // Clean Code: el estado interno queda encapsulado; ya no se exponen campos públicos.
+    private int codigo;
+    private String nombre;
+    private double precio;
+    private int inventario;
+    // SRP: las reglas de negocio viven en el servicio; la ventana solo lo usa.
+    // IoC: el servicio se recibe por el constructor; la ventana ya no lo crea.
+    private final InventarioService servicio;
+    // DRY: un único modelo reutilizable evita recrearlo después de cada operación.
+    private final TableModelProducto modeloProductos;
+
+    // Acción de negocio que se ejecuta una vez leídos y validados los datos del formulario.
+    private interface Accion {
+        void ejecutar();
+    }
+
     /**
      * Creates new form Principal
      */
-    public Principal() {
+    public Principal(InventarioService servicio) {
+        this.servicio = servicio;
+        this.modeloProductos = new TableModelProducto(servicio.listar());
         initComponents();
-        this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
+        // DRY: la vista conserva el mismo modelo durante toda la ejecución.
+        this.tblTabla.setModel(modeloProductos);
     }
 
     /**
@@ -72,39 +90,18 @@ public class Principal extends javax.swing.JFrame {
 
         txtCodigo.setEditable(false);
         txtCodigo.setEnabled(false);
-        txtCodigo.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtCodigoActionPerformed(evt);
-            }
-        });
 
         jLabel4.setText("Nombre:");
 
-        txtNombre.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtNombreActionPerformed(evt);
-            }
-        });
 
         jLabel5.setText("Precio:");
 
-        txtPrecio.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtPrecioActionPerformed(evt);
-            }
-        });
 
         jLabel6.setText("Inventario:");
 
-        txtInventario.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtInventarioActionPerformed(evt);
-            }
-        });
 
         btnAgregar.setBackground(new java.awt.Color(248, 250, 250));
         btnAgregar.setText("Agregar");
-        //btnAgregar.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
         btnAgregar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnAgregarActionPerformed(evt);
@@ -142,7 +139,6 @@ public class Principal extends javax.swing.JFrame {
         btnEliminar.setBackground(new java.awt.Color(51, 88, 239));
         btnEliminar.setForeground(new java.awt.Color(255, 255, 255));
         btnEliminar.setText("Eliminar");
-        //btnEliminar.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.RAISED));
         btnEliminar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnEliminarActionPerformed(evt);
@@ -296,147 +292,121 @@ public class Principal extends javax.swing.JFrame {
     // </editor-fold>
     //GEN-END:initComponents                                                                       
 
-    private void txtCodigoActionPerformed(java.awt.event.ActionEvent evt) {                                          
-        // TODO add your handling code here:
-    }                                         
+    private void btnEliminarActionPerformed(java.awt.event.ActionEvent evt) {
+        ejecutar(() -> servicio.eliminar(new Producto(codigo, nombre, precio, inventario)),
+                "Producto eliminado Exitosamente");
+    }
 
-    private void txtNombreActionPerformed(java.awt.event.ActionEvent evt) {                                          
-        // TODO add your handling code here:
-    }                                         
+    private void btnInformeActionPerformed(java.awt.event.ActionEvent evt) {
+        JOptionPane.showMessageDialog(this, servicio.generarInforme(), "Productos Más Costosos", JOptionPane.INFORMATION_MESSAGE);
+    }
 
-    private void txtPrecioActionPerformed(java.awt.event.ActionEvent evt) {                                          
-        // TODO add your handling code here:
-    }                                         
+    private void btnAgregarActionPerformed(java.awt.event.ActionEvent evt) {
+        ejecutar(() -> servicio.agregar(new Producto(codigo, nombre, precio, inventario)),
+                "Producto Agregado Exitosamente");
+    }
 
-    private void txtInventarioActionPerformed(java.awt.event.ActionEvent evt) {                                              
-        // TODO add your handling code here:
-    }                                             
-
-    private void btnEliminarActionPerformed(java.awt.event.ActionEvent evt) {                                            
-        if (validarDatos()) {
-            bdProductos.borrar(new Producto(codigo, nombre, precio, inventario));
-            this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-            limpiarDatos();
-            JOptionPane.showMessageDialog(this,"Producto eliminado Exitosamente", "Confirmacion", 1);
-        } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
-        }
-    }                                           
-
-    private void btnInformeActionPerformed(java.awt.event.ActionEvent evt) {                                           
-        JOptionPane.showMessageDialog(this, bdProductos.generarInforme(), "Productos Más Costosos", 1);
-    }                                          
-
-    private void btnAgregarActionPerformed(java.awt.event.ActionEvent evt) {                                           
-        if (validarDatos()) {
-            if (!bdProductos.verificarExistencias(nombre)) {
-                    if (codigo == 0) {
-                if (nombre.matches("[a-zA-Z]+")) {
-                        int codigoAux = bdProductos.ultimoCodigo() + 1;
-                        bdProductos.agregar(new Producto(codigoAux, nombre, precio, inventario));
-                        this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                        limpiarDatos();
-                        JOptionPane.showMessageDialog(this,"Producto Agregado Exitosamente", "Confirmacion", 1);
-                    } else {
-                        JOptionPane.showMessageDialog(this,"El nombre no puede contener numeros", "Advertencia", 2);
-                    }
-                } else {
-                    JOptionPane.showMessageDialog(this,"Imposible agregar! Esta accion es permitida para Actualizar o Borrar", "Advertencia", 2);
-                }
-            } else {
-                JOptionPane.showMessageDialog(this,"El producto ya existe", "Advertencia", 2);
-            }
-        } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
-        }
-    }                                          
-
-    private void tblTablaMouseClicked(java.awt.event.MouseEvent evt) {                                      
-        Producto producto = ((TableModelProducto) this.tblTabla.getModel()).detalle(this.tblTabla.getSelectedRow());
+    private void tblTablaMouseClicked(java.awt.event.MouseEvent evt) {
+        Producto producto = modeloProductos.detalle(this.tblTabla.getSelectedRow());
         this.txtCodigo.setText(String.valueOf(producto.getCodigo()));
         this.txtNombre.setText(producto.getNombre());
         this.txtPrecio.setText(String.valueOf(producto.getPrecio()));
         this.txtInventario.setText(String.valueOf(producto.getInventario()));
-    }                                     
+    }
 
-    private void btnActualizarActionPerformed(java.awt.event.ActionEvent evt) {                                              
-        if (validarDatos() && inventario >= 0) {
-            bdProductos.actualizar(new Producto(codigo, nombre, precio, inventario));
-            this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-            limpiarDatos();
-            JOptionPane.showMessageDialog(this,"Producto actualizado Exitosamente", "Confirmacion", 1);
-        } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
-        }
-    }                                             
-    
-    private void btnComprarActionPerformed(java.awt.event.ActionEvent evt) {                                           
-        Producto producto = ((TableModelProducto) this.tblTabla.getModel()).detalle(this.tblTabla.getSelectedRow());
-        int actualInventario = Integer.parseInt(String.valueOf(producto.getInventario()));
-        //nuevoInventario = actualInventario - inventario;
-        
-        if (validarDatos() && inventario > 0 && inventario <= actualInventario) {
-            if (nuevoInventario >= 0) {
-                nuevoInventario = actualInventario - inventario;
-                //bdProductos.agregar(new Producto(codigo, nombre, precio, nuevoInventario));
-                bdProductos.comprarProducto(producto, nuevoInventario);
-                this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                limpiarDatos();
-                //bdProductos.actualizar(new Producto(codigo, nombre, precio, nuevoInventario));
-                //this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                //limpiarDatos();
-                JOptionPane.showMessageDialog(this,"Producto comprado Exitosamente", "Confirmacion", 1);
-            } else {
-                JOptionPane.showMessageDialog(this,"No tenemos el suficiente inventario", "Advertencia", 2);
-            }
-        } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
-        }
-    }           
-    
-    private void btnVenderActionPerformed(java.awt.event.ActionEvent evt) {                                           
-        Producto producto = ((TableModelProducto) this.tblTabla.getModel()).detalle(this.tblTabla.getSelectedRow());
-        int actualInventario = Integer.parseInt(String.valueOf(producto.getInventario()));
-        //nuevoInventario = actualInventario - inventario;
-        
-        if (validarDatos() && inventario > 0) {
-            if (nuevoInventario >= 0) {
-                nuevoInventario = actualInventario + inventario;
-                //bdProductos.agregar(new Producto(codigo, nombre, precio, nuevoInventario));
-                bdProductos.comprarProducto(producto, nuevoInventario);
-                this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                limpiarDatos();
-                //bdProductos.actualizar(new Producto(codigo, nombre, precio, nuevoInventario));
-                //this.tblTabla.setModel(new TableModelProducto(bdProductos.getListaProductos()));
-                //limpiarDatos();
-                JOptionPane.showMessageDialog(this,"Producto vendido Exitosamente", "Confirmacion", 1);
-            } else {
-                JOptionPane.showMessageDialog(this,"No tenemos el suficiente inventario", "Advertencia", 2);
-            }
-        } else {
-            JOptionPane.showMessageDialog(this,"Alguno de los valores digitados esta vacio o es erroneo", "Advertencia", 2);
-        }
-    }                                          
+    private void btnActualizarActionPerformed(java.awt.event.ActionEvent evt) {
+        ejecutar(() -> servicio.actualizar(new Producto(codigo, nombre, precio, inventario)),
+                "Producto actualizado Exitosamente");
+    }
 
-    public boolean validarDatos() {
-        try {    
+    private void btnComprarActionPerformed(java.awt.event.ActionEvent evt) {
+        // DRY: delega en la lógica común de inventario.
+        operarInventario(new Comprar());
+    }
+
+    private void btnVenderActionPerformed(java.awt.event.ActionEvent evt) {
+        // DRY: delega en la lógica común de inventario.
+        operarInventario(new Vender());
+    }
+
+    /**
+     * DRY: lógica única para Comprar y Vender. SRP: la regla del inventario la
+     * aplica el servicio; aquí solo se obtiene la fila y se muestra el resultado.
+     */
+    private void operarInventario(OperacionInventario operacion) {
+        Producto producto = modeloProductos.detalle(this.tblTabla.getSelectedRow());
+        ejecutar(() -> servicio.operar(producto, operacion, inventario), operacion.getMensaje());
+    }
+
+    /**
+     * SRP: lee el formulario, pide la operación al servicio y muestra el resultado
+     * (advertencia si el servicio rechaza la operación, confirmación si sale bien).
+     */
+    private void ejecutar(Accion accion, String mensajeExito) {
+        if (!validarDatos()) {
+            mostrarErrorValidacion();
+            return;
+        }
+        try {
+            accion.ejecutar();
+        } catch (InventarioException ex) {
+            mostrarAdvertencia(ex.getMessage());
+            return;
+        }
+        finalizarOperacion(mensajeExito);
+    }
+
+    // Clean Code: validación privada; no forma parte de la API de la ventana.
+    private boolean validarDatos() {
+        try {
             codigo = Integer.parseInt("".equals(txtCodigo.getText()) ? "0" : txtCodigo.getText());
             nombre = txtNombre.getText();
             precio = Double.parseDouble(txtPrecio.getText());
             inventario = Integer.parseInt(txtInventario.getText());
-            return true;            
+            return true;
         } catch (Exception e) {
             return false;
         }
     }
-    
-    public void limpiarDatos() {
+
+    /**
+     * DRY: único punto de refresco. Reutiliza el modelo existente y notifica
+     * a la vista mediante fireTableDataChanged().
+     */
+    private void refrescarTabla() {
+        modeloProductos.actualizarTabla(servicio.listar());
+        this.tblTabla.clearSelection();
+    }
+
+    // Clean Code: centraliza el diálogo de advertencia y elimina los números mágicos.
+    private void mostrarAdvertencia(String mensaje) {
+        JOptionPane.showMessageDialog(this, mensaje, "Advertencia", JOptionPane.WARNING_MESSAGE);
+    }
+
+    /**
+     * DRY: mensaje de validación que antes se repetía en cinco manejadores.
+     */
+    private void mostrarErrorValidacion() {
+        mostrarAdvertencia(InventarioService.MENSAJE_DATOS_INVALIDOS);
+    }
+
+    /**
+     * DRY: concentra la secuencia repetida refrescar + limpiar + confirmar.
+     */
+    private void finalizarOperacion(String mensaje) {
+        refrescarTabla();
+        limpiarDatos();
+        JOptionPane.showMessageDialog(this, mensaje, "Confirmacion", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    // Clean Code: helper privado; solo se utiliza dentro de esta clase.
+    private void limpiarDatos() {
         this.txtCodigo.setText("");
         this.txtNombre.setText("");
         this.txtPrecio.setText("");
         this.txtInventario.setText("");
     }
-    
+
     /**
      * @param args the command line arguments
      */
@@ -453,13 +423,9 @@ public class Principal extends javax.swing.JFrame {
                     break;
                 }
             }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(Principal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(Principal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(Principal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException
+                | javax.swing.UnsupportedLookAndFeelException ex) {
+            // DRY: un solo bloque para las cuatro excepciones, que se tratan igual.
             java.util.logging.Logger.getLogger(Principal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
@@ -467,7 +433,11 @@ public class Principal extends javax.swing.JFrame {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new Principal().setVisible(true);
+                // IoC: único lugar donde se crean y conectan las dependencias.
+                BaseDatosProductos baseDatos = new BaseDatosProductos();
+                InformeProductos informe = new InformeProductos(new MasCostosos());
+                InventarioService servicio = new InventarioService(baseDatos, informe);
+                new Principal(servicio).setVisible(true);
             }
         });
     }
