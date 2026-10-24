@@ -22,9 +22,10 @@ public class Principal extends javax.swing.JFrame {
     private double precio;
     private int inventario;
     // SRP: las reglas de negocio viven en el servicio; la ventana solo lo usa.
-    private final InventarioService servicio = new InventarioService();
+    // IoC: el servicio se recibe por el constructor; la ventana ya no lo crea.
+    private final InventarioService servicio;
     // DRY: un único modelo reutilizable evita recrearlo después de cada operación.
-    private final TableModelProducto modeloProductos = new TableModelProducto(servicio.listar());
+    private final TableModelProducto modeloProductos;
 
     // Acción de negocio que se ejecuta una vez leídos y validados los datos del formulario.
     private interface Accion {
@@ -34,7 +35,9 @@ public class Principal extends javax.swing.JFrame {
     /**
      * Creates new form Principal
      */
-    public Principal() {
+    public Principal(InventarioService servicio) {
+        this.servicio = servicio;
+        this.modeloProductos = new TableModelProducto(servicio.listar());
         initComponents();
         // DRY: la vista conserva el mismo modelo durante toda la ejecución.
         this.tblTabla.setModel(modeloProductos);
@@ -430,7 +433,11 @@ public class Principal extends javax.swing.JFrame {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new Principal().setVisible(true);
+                // IoC: único lugar donde se crean y conectan las dependencias.
+                BaseDatosProductos baseDatos = new BaseDatosProductos();
+                InformeProductos informe = new InformeProductos(new MasCostosos());
+                InventarioService servicio = new InventarioService(baseDatos, informe);
+                new Principal(servicio).setVisible(true);
             }
         });
     }

@@ -6,16 +6,13 @@ import java.util.List;
  * SRP: única responsabilidad de esta clase, armar el texto del informe.
  * OCP: qué productos entran lo decide un CriterioInforme; cambiar o agregar
  * criterios no obliga a modificar esta clase.
+ * IoC: el criterio se recibe por el constructor; la clase ya no decide cuál usar.
  *
  * @author Abraham Galue
  */
 public class InformeProductos {
 
     private final CriterioInforme criterio;
-
-    public InformeProductos() {
-        this(new MasCostosos());
-    }
 
     public InformeProductos(CriterioInforme criterio) {
         this.criterio = criterio;
