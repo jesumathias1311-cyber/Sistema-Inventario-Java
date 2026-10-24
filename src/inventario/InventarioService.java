@@ -15,27 +15,6 @@ public class InventarioService {
     public static final String MENSAJE_DATOS_INVALIDOS
             = "Alguno de los valores digitados esta vacio o es erroneo";
 
-    /**
-     * Sentido de la operación sobre el inventario. Comprar descuenta unidades y
-     * Vender las suma (comportamiento original del sistema).
-     */
-    public enum Operacion {
-        COMPRAR(-1, "Producto comprado Exitosamente"),
-        VENDER(1, "Producto vendido Exitosamente");
-
-        private final int factor;
-        private final String mensaje;
-
-        Operacion(int factor, String mensaje) {
-            this.factor = factor;
-            this.mensaje = mensaje;
-        }
-
-        public String getMensaje() {
-            return mensaje;
-        }
-    }
-
     private final BaseDatosProductos baseDatos = new BaseDatosProductos();
     private final InformeProductos informe = new InformeProductos();
 
@@ -69,16 +48,16 @@ public class InventarioService {
     }
 
     /**
-     * Comprar o Vender: ajusta el inventario del producto según el sentido de
-     * la operación. Reemplaza al antiguo comprarProducto(), que modificaba el
-     * objeto compartido; ahora se guarda una copia con el inventario nuevo.
+     * Comprar o Vender: ajusta el inventario del producto según la operación.
+     * OCP: la regla de cada operación vive en su propia clase; este método no
+     * cambia cuando se agrega una operación nueva. Se guarda una copia con el
+     * inventario nuevo (antes comprarProducto() modificaba el objeto compartido).
      */
-    public void operar(Producto producto, Operacion operacion, int cantidad) {
-        if (cantidad <= 0
-                || (operacion == Operacion.COMPRAR && cantidad > producto.getInventario())) {
+    public void operar(Producto producto, OperacionInventario operacion, int cantidad) {
+        if (!operacion.esValida(producto, cantidad)) {
             throw new InventarioException(MENSAJE_DATOS_INVALIDOS);
         }
-        int nuevoInventario = producto.getInventario() + operacion.factor * cantidad;
+        int nuevoInventario = operacion.nuevoInventario(producto, cantidad);
         baseDatos.actualizar(new Producto(producto.getCodigo(), producto.getNombre(),
                 producto.getPrecio(), nuevoInventario));
     }

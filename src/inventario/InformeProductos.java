@@ -1,20 +1,28 @@
 package inventario;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * SRP: única responsabilidad de esta clase, armar el informe de los productos
- * más costosos. Antes esta lógica estaba dentro de BaseDatosProductos.
+ * SRP: única responsabilidad de esta clase, armar el texto del informe.
+ * OCP: qué productos entran lo decide un CriterioInforme; cambiar o agregar
+ * criterios no obliga a modificar esta clase.
  *
  * @author Abraham Galue
  */
 public class InformeProductos {
 
-    private static final int CANTIDAD_INFORME = 3;
+    private final CriterioInforme criterio;
+
+    public InformeProductos() {
+        this(new MasCostosos());
+    }
+
+    public InformeProductos(CriterioInforme criterio) {
+        this.criterio = criterio;
+    }
 
     public String generar(List<Producto> productos) {
-        List<Producto> listaM = obtenerMayores(productos);
+        List<Producto> listaM = criterio.seleccionar(productos);
         StringBuilder informe = new StringBuilder();
         for (int i = 0; i < listaM.size(); i++) {
             if (i > 0) {
@@ -23,21 +31,5 @@ public class InformeProductos {
             informe.append(listaM.get(i).getNombre());
         }
         return informe.append(".").toString();
-    }
-
-    private List<Producto> obtenerMayores(List<Producto> productos) {
-        List<Producto> lista = new ArrayList<>(productos);
-        List<Producto> listaMayores = new ArrayList<>();
-        for (int i = 0; i < CANTIDAD_INFORME; i++) {
-            Producto p = new Producto();
-            for (Producto pTemp : lista) {
-                if (pTemp.getPrecio() > p.getPrecio()) {
-                    p = pTemp;
-                }
-            }
-            listaMayores.add(p);
-            lista.remove(p);
-        }
-        return listaMayores;
     }
 }
