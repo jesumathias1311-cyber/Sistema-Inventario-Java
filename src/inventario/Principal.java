@@ -318,19 +318,19 @@ public class Principal extends javax.swing.JFrame {
 
     private void btnComprarActionPerformed(java.awt.event.ActionEvent evt) {
         // DRY: delega en la lógica común de inventario.
-        operarInventario(InventarioService.Operacion.COMPRAR);
+        operarInventario(new Comprar());
     }
 
     private void btnVenderActionPerformed(java.awt.event.ActionEvent evt) {
         // DRY: delega en la lógica común de inventario.
-        operarInventario(InventarioService.Operacion.VENDER);
+        operarInventario(new Vender());
     }
 
     /**
      * DRY: lógica única para Comprar y Vender. SRP: la regla del inventario la
      * aplica el servicio; aquí solo se obtiene la fila y se muestra el resultado.
      */
-    private void operarInventario(InventarioService.Operacion operacion) {
+    private void operarInventario(OperacionInventario operacion) {
         Producto producto = modeloProductos.detalle(this.tblTabla.getSelectedRow());
         ejecutar(() -> servicio.operar(producto, operacion, inventario), operacion.getMensaje());
     }
