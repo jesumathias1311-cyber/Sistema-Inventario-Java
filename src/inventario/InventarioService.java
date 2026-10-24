@@ -15,8 +15,14 @@ public class InventarioService {
     public static final String MENSAJE_DATOS_INVALIDOS
             = "Alguno de los valores digitados esta vacio o es erroneo";
 
-    private final BaseDatosProductos baseDatos = new BaseDatosProductos();
-    private final InformeProductos informe = new InformeProductos();
+    // IoC: las dependencias llegan por el constructor, ya no se crean con new aquí.
+    private final BaseDatosProductos baseDatos;
+    private final InformeProductos informe;
+
+    public InventarioService(BaseDatosProductos baseDatos, InformeProductos informe) {
+        this.baseDatos = baseDatos;
+        this.informe = informe;
+    }
 
     public List<Producto> listar() {
         return baseDatos.getListaProductos();
